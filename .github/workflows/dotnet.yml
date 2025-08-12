@@ -24,16 +24,13 @@ jobs:
       run: dotnet restore
       
     - name: Build solution
-      run: dotnet build -c release
-      
-    - name: Pack UnGet package  
-      run: dotnet pack -c release -o out -p:PackageVersion=${{ github.ref_name }}
+      run: dotnet build -c release      
       
     - name: Test
       run: dotnet test --no-build --verbosity normal
+      
+    - name: Pack UnGet package  
+      run: dotnet pack -c release -o ./output -p:PackageVersion=${{ github.ref_name }}
 
-    - name: Publish NuGet
-      uses: brandedoutcast/publish-nuget@v2.5.5
-      with:
-          PROJECT_FILE_PATH: AIDataGen.csproj
-          NUGET_KEY: ${{secrets.NUGET_API_KEY}}
+    - name: Publish to NuGet.org
+      run: dotnet nuget push ./output/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
