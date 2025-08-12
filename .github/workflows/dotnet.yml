@@ -25,7 +25,7 @@ jobs:
       run: dotnet restore
       
     - name: Build solution
-      run: dotnet build -c release && 
+      run: dotnet build -c release
       
     - name: Pack UnGet package  
       run: dotnet pack -c release -o out -p:PackageVersion=${{ github.sha }}
