@@ -5,6 +5,7 @@ name: .NET
 
 on:
   push:
+    branches: [ "master" ]
     tags: [ 'v*.*.*' ]
 
 jobs:
@@ -24,7 +25,7 @@ jobs:
       run: dotnet build -c release && 
       
     - name: Pack UnGet package  
-      run: dotnet pack -c release -o out -p:PackageVersion=${{ github.ref_name }}
+      run: dotnet pack -c release -o out -p:PackageVersion=${{ github.sha }}
       
     - name: Test
       run: dotnet test --no-build --verbosity normal
