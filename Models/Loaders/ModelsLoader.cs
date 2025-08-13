@@ -4,7 +4,7 @@ namespace AIDataGen.Models.Loaders
 {
     internal static class ModelsLoader
     {
-        private static async Task DownloadGemma()
+        private static async Task DownloadGemma(string token)
         {
             // Check model already download if use cache
             if (AIGen.CacheModels && File.Exists(Constants.TextModelPath))
@@ -15,7 +15,7 @@ namespace AIDataGen.Models.Loaders
             // Load model to TMP dir
             var modelUrl = "https://huggingface.co/google/gemma-3-4b-it-qat-q4_0-gguf/resolve/main/gemma-3-4b-it-q4_0.gguf?download=true";
             var localPath = Constants.TmpPath + "gemma-3-4b-it-q4_0.gguf";
-            var loader = new FilesLoader();
+            var loader = new FilesLoader(token);
             var progressBar = new ConsoleProgressBar(message: $"Download LLM model...");
             await loader.DownloadFileAsync(modelUrl, localPath, progressBar.GetProgress());
 
@@ -28,7 +28,7 @@ namespace AIDataGen.Models.Loaders
             Directory.CreateDirectory(Constants.TmpPath);
             Directory.CreateDirectory(Constants.ModelsPath);
 
-            var gemma = DownloadGemma();
+            var gemma = DownloadGemma(token);
             Task.WaitAll(gemma);
         }
     }

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Dynamic;
 using System.Linq;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using static System.Net.WebRequestMethods;
@@ -14,9 +15,13 @@ namespace AIDataGen.Models.Loaders
     {
         private readonly HttpClient _httpClient;
 
-        public FilesLoader()
+        public FilesLoader(string authToken = null)
         {
             _httpClient = new HttpClient();
+            if (authToken != null)
+            {
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+            }
         }
 
         public async Task DownloadFileAsync(

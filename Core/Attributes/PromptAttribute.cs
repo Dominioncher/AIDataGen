@@ -10,9 +10,12 @@ namespace AIDataGen.Core.Attributes
     {
         public string Description { get; private set; }
 
-        public PromptAttribute(string description)
+        public string[] Modifiers { get; private set; }
+
+        public PromptAttribute(string description, params string[] modifiers)
         {
             Description = description;
+            Modifiers = modifiers;
         }
     }
 }

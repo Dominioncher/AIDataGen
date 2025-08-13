@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace AIDataGen.Core
 {
@@ -28,101 +29,98 @@ namespace AIDataGen.Core
 
             var type = typeof(T);
             var attribute = type.GetCustomAttribute<PromptAttribute>();
-            var prompt = Prompts.GetDataGenerationPrompt(attribute.Description, context);//, modifiers: new string[] { "Get detailed description" });
+            var prompt = Prompts.GetListFirstElementGenerationPrompt(attribute.Description, attribute.Modifiers, context);
+
             using var session = _model.CreateSession();
+
+            var modelResults = new List<string>();
+            modelResults.Add(await session.Generate(prompt));
 
             for (int i = 1; i < count; i++)
             {
-                var text = await session.Generate(prompt);
-                var instance = await TextToObject(type, text, attribute.Description, session);
-                yield return (T)instance;
+                prompt = Prompts.GetListNextElementGenerationPrompt(attribute.Description, attribute.Modifiers, context);
+                modelResults.Add(await session.Generate(prompt));
+            }
+
+            foreach (var result in modelResults)
+            {
+                var element = await GetInstanceFromModelResultText(type, result, session);
+                yield return (T)element;
             }
         }
 
 
         #region Generation rules
 
-        private async ValueTask<object> GenerateString(PropertyInfo info, string parentAttribute, string parentDescription, TextModelSession session)
-        {
-            var attribute = info.GetCustomAttribute<PromptAttribute>();
-            var prompt = Prompts.GetDataGenerationPrompt(attribute.Description, parentAttribute, parentDescription);
-            var text = await session.Generate(prompt);
-            return await TextToObject(info.PropertyType, text, attribute.Description, session);
-        }
-
-        private async ValueTask<object> GenerateCollection(PropertyInfo info, string parentAttribute, string parentDescription, TextModelSession session)
-        {
-            var attribute = info.GetCustomAttribute<PromptAttribute>();
-            var randomAttribute = info.GetCustomAttribute<RandomAttribute>();
-            var rnd = new Random();
-            var count = rnd.Next((int)randomAttribute.Min, (int)randomAttribute.Max);
-            var instance = Activator.CreateInstance(info.PropertyType);
-            var elementType = info.PropertyType.GetGenericArguments()[0];
-
-            if (count <= 0)
-            {
-                return instance;
-            }
-
-            var prompt = Prompts.GetListGenerationPrompt(attribute.Description, parentAttribute, parentDescription);
-
-            for (int i = 0; i < count; i++)
-            {
-                var text = await session.Generate(prompt);
-                var element = await TextToObject(elementType, text, attribute.Description, session);
-                info.PropertyType.GetMethod("Add").Invoke(instance, [element]);
-            }
-
-            return instance;
-        }
-
-        private async ValueTask<object> GenerateClass(PropertyInfo info, string parentAttribute, string parentDescription, TextModelSession session)
-        {
-            var attribute = info.GetCustomAttribute<PromptAttribute>();
-            var prompt = Prompts.GetDataGenerationPrompt(attribute.Description, parentAttribute, parentDescription);//, modifiers: new string[] { "Get detailed description" });
-            var text = await session.Generate(prompt);
-            return await TextToObject(info.PropertyType, text, attribute.Description, session);
-        }
-
-        private async ValueTask<object> TextToObject(Type type, string text, string description, TextModelSession session)
-        {
-            if (type == typeof(string))
-            {
-                return text;
-            }
-
-            if (type.IsClass)
-            {
-                var instance = Activator.CreateInstance(type);
-                foreach (var property in type.GetProperties())
-                {
-                    var propertyInstance = await GenerateProperty(property, description, text, session);
-                    property.SetValue(instance, propertyInstance);
-                }
-                return instance;
-            }
-
-            return null;
-        }
-
-        private async ValueTask<object> GenerateProperty(PropertyInfo info, string parentAttribute, string parentDescription, TextModelSession session)
+        private async ValueTask<object> GenerateProperty(PropertyInfo info, string context, TextModelSession session)
         {
             if (info.PropertyType.IsCollection())
             {
-                return await GenerateCollection(info, parentAttribute, parentDescription, session);
+                return await GenerateCollection(info, context, session);
             }
 
-            if (info.PropertyType == typeof(string))
+            return await GenerateObject(info, context, session);
+        }
+
+        private async ValueTask<object> GenerateObject(PropertyInfo info, string context, TextModelSession session)
+        {
+            var attribute = info.GetCustomAttribute<PromptAttribute>();
+            var prompt = Prompts.GetObjectGenerationPrompt(attribute.Description, attribute.Modifiers, context);
+            var modelResult = await session.Generate(prompt);
+            return await GetInstanceFromModelResultText(info.PropertyType, modelResult, session);
+        }
+
+        private async ValueTask<object> GenerateCollection(PropertyInfo info, string context, TextModelSession session)
+        {
+            var randomAttribute = info.GetCustomAttribute<RandomAttribute>();
+            var rnd = new Random();
+            var collectionCount = rnd.Next((int)randomAttribute.Min, (int)randomAttribute.Max);
+            var collectionInstance = Activator.CreateInstance(info.PropertyType);
+            var attribute = info.GetCustomAttribute<PromptAttribute>();
+            var elementType = info.PropertyType.GetGenericArguments()[0];
+
+            if (collectionCount <= 0)
             {
-                return await GenerateString(info, parentAttribute, parentDescription, session);
+                return collectionInstance;
             }
 
-            if (info.PropertyType.IsClass)
+            // Generate first element
+            var prompt = Prompts.GetListFirstElementGenerationPrompt(attribute.Description, attribute.Modifiers, context);
+            var modelResults = new List<string>();
+            modelResults.Add(await session.Generate(prompt));
+
+            // Generate next elements
+            for (int i = 1; i < collectionCount; i++)
             {
-                return await GenerateClass(info, parentAttribute, parentDescription, session);
+                prompt = Prompts.GetListNextElementGenerationPrompt(attribute.Description, attribute.Modifiers, context);
+                modelResults.Add(await session.Generate(prompt));
             }
 
-            return null;
+            // Generate all elements initital data
+            foreach (var result in modelResults)
+            {
+                var element = await GetInstanceFromModelResultText(elementType, result, session);
+                info.PropertyType.GetMethod("Add").Invoke(collectionInstance, [element]);
+            }
+
+            return collectionInstance;
+        }
+
+        private async ValueTask<object> GetInstanceFromModelResultText(Type type, string modelResult, TextModelSession session)
+        {
+            if (type == typeof(string))
+            {
+                return modelResult.Trim().Replace("\n", "").Replace("\"", "");
+            }
+
+            var instance = Activator.CreateInstance(type);
+            foreach (var property in type.GetProperties())
+            {
+                var propertyInstance = await GenerateProperty(property, modelResult, session);
+                property.SetValue(instance, propertyInstance);
+            }
+
+            return instance;
         }
 
         #endregion

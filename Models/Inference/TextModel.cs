@@ -9,28 +9,28 @@ namespace AIDataGen.Models.Inference
     {
         public LLamaWeights Model { get; private set; }
 
-        private LLamaContext _context;
+        private ModelParams _parameters;
 
         public async Task LoadModel()
         {
             // Load model
-            var parameters = new ModelParams(Constants.TextModelPath)
+            _parameters = new ModelParams(Constants.TextModelPath)
             {
                 ContextSize = 4096, // The longest length of chat as memory.
                 GpuLayerCount = 5, // How many layers to offload to GPU. Please adjust it according to your GPU memory.
                 BatchSize = 128
             };
-            Model = await LLamaWeights.LoadFromFileAsync(parameters);
-            _context = Model.CreateContext(parameters);
+            Model = await LLamaWeights.LoadFromFileAsync(_parameters);
         }
 
         public TextModelSession CreateSession()
         {
-            var executor = new InteractiveExecutor(_context);
+            var context = Model.CreateContext(_parameters);
+            var executor = new InteractiveExecutor(context);
             var history = new ChatHistory();
             var session = new ChatSession(executor, history);
-            session.History.AddMessage(AuthorRole.System, Prompts.GetSystemChainOfThoughtPrompt());
-            return new TextModelSession(_context, session);
+            session.History.AddMessage(AuthorRole.System, Prompts.GetSystemSimplePrompt());
+            return new TextModelSession(context, session);
         }
     }
 
@@ -76,29 +76,12 @@ namespace AIDataGen.Models.Inference
                 AntiPrompts = new List<string> { "###", "User:", "\n\n\n" },
             };
 
-            //Console.ForegroundColor = ConsoleColor.DarkGreen;
-            //Console.WriteLine(prompt);
-            //Console.ForegroundColor = ConsoleColor.White;
-
             var result = "";
             var chat = _session.ChatAsync(new ChatHistory.Message(AuthorRole.User, prompt), inferenceParams);
             await foreach (var text in chat)
             {
                 result += text;
-                //Console.Write(text);
             }
-
-            //var start = result.IndexOf("<final_answer>") + 14;
-            //var end = result.LastIndexOf("</final_answer>");
-
-            var start = result.IndexOf("Assistant:") + 10;
-            var end = result.Length - 1;
-
-            result = result.Substring(start, end - start).Trim();
-
-            //Console.ForegroundColor = ConsoleColor.Red;
-            //Console.WriteLine(result);
-            //Console.ForegroundColor = ConsoleColor.White;
 
             return result;
         }
