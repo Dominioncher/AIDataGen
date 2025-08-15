@@ -122,6 +122,12 @@ namespace AIDataGen.Models.Inference
             return CreatePrompt(instruction, modifiers, context);
         }
 
+        public static string GetImageGenerationPrompt(string objectDescription, string context = null)
+        {
+            var instruction = $"Describe {objectDescription.ToLower()}.";
+            return CreatePrompt(instruction, new string[] { "Create detailed prompt for StableDiffusion. Get only prompt text." }, context);
+        }
+
         private static string CreatePrompt(string instruction, string[] modifiers = null, string context = null)
         {
             if (modifiers != null && modifiers.Any())

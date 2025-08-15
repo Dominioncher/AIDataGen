@@ -1,23 +1,31 @@
 ﻿using AIDataGen.Core.Attributes;
 using AIDataGen.Models.Inference;
+using OnnxStack.Core.Image;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace AIDataGen.Core
 {
     public class Generator
     {
-        private TextModel _model;
+        private TextModel _textModel;
+
+        private ImageModel _imageModel;
 
         public Generator()
         {
-            _model = new TextModel();
-            _model.LoadModel().Wait();
+            _textModel = new TextModel();
+            _textModel.LoadModel().Wait();
+            _imageModel = new ImageModel();
+            _imageModel.LoadModel();
         }
 
         public async IAsyncEnumerable<T> Generate<T>(int count, string context = null) where T : new()
@@ -31,7 +39,7 @@ namespace AIDataGen.Core
             var attribute = type.GetCustomAttribute<PromptAttribute>();
             var prompt = Prompts.GetListFirstElementGenerationPrompt(attribute.Description, attribute.Modifiers, context);
 
-            using var session = _model.CreateSession();
+            using var session = _textModel.CreateSession();
 
             var modelResults = new List<string>();
             modelResults.Add(await session.Generate(prompt));
@@ -54,9 +62,19 @@ namespace AIDataGen.Core
 
         private async ValueTask<object> GenerateProperty(PropertyInfo info, string context, TextModelSession session)
         {
+            if (info.PropertyType.IsCollection() && info.PropertyType.GetGenericArguments()[0] == typeof(SixLabors.ImageSharp.Image))
+            {
+                return await GenerateImageCollection(info, context, session);
+            }
+
             if (info.PropertyType.IsCollection())
             {
                 return await GenerateCollection(info, context, session);
+            }
+
+            if (info.PropertyType == typeof(SixLabors.ImageSharp.Image))
+            {
+                return await GenerateImage(info, context, session);
             }
 
             return await GenerateObject(info, context, session);
@@ -121,6 +139,43 @@ namespace AIDataGen.Core
             }
 
             return instance;
+        }
+
+        private async ValueTask<object> GenerateImage(PropertyInfo info, string context, TextModelSession session)
+        {
+            var attribute = info.GetCustomAttribute<PromptAttribute>();
+            var prompt = Prompts.GetImageGenerationPrompt(attribute.Description, context);
+            var modelResult = await session.Generate(prompt);
+            var mods = attribute.Modifiers.Any() ? ", " + string.Join(", ", attribute.Modifiers.Select(x => char.ToLower(x[0]) + x.Substring(1))) : "";
+            var SDPrompt = modelResult.Trim() + mods;
+            var image = await _imageModel.Generate(SDPrompt);
+            return image;
+        }
+
+        private async ValueTask<object> GenerateImageCollection(PropertyInfo info, string context, TextModelSession session)
+        {
+            var randomAttribute = info.GetCustomAttribute<RandomAttribute>();
+            var rnd = new Random();
+            var collectionCount = rnd.Next((int)randomAttribute.Min, (int)randomAttribute.Max);
+            var collectionInstance = Activator.CreateInstance(info.PropertyType);
+            var attribute = info.GetCustomAttribute<PromptAttribute>();
+
+            if (collectionCount <= 0)
+            {
+                return collectionInstance;
+            }
+
+            for (int i = 0; i < collectionCount; i++)
+            {
+                var prompt = Prompts.GetImageGenerationPrompt(attribute.Description, context);
+                var modelResult = await session.Generate(prompt);
+                var mods = attribute.Modifiers.Any() ? ", " + string.Join(", ", attribute.Modifiers.Select(x => char.ToLower(x[0]) + x.Substring(1))) : "";
+                var SDPrompt = modelResult.Trim() + mods;
+                var image = await _imageModel.Generate(SDPrompt);
+                info.PropertyType.GetMethod("Add").Invoke(collectionInstance, [image]);
+            }
+
+            return collectionInstance;
         }
 
         #endregion

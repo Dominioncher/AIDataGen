@@ -1,18 +1,18 @@
 ﻿using AIDataGen;
+using System.Diagnostics;
 using TestAIGenConsoleApp;
 
 
 
-// Cache and load models
-AIGen.CacheModels = true;
+// Load models
 AIGen.DownloadModels("<API key>");
 
 
 
 var generator = AIGen.GetGenerator();
-var cars = generator.Generate<Car>(5, "Get only Ferrari car collection");
-var list = new List<Car>();
+var cars = generator.Generate<Movie>(2);
+var time = new Stopwatch();
 await foreach (var car in cars)
-{
-    list.Add(car);
+{    
+    Console.WriteLine(car.Description);
 }

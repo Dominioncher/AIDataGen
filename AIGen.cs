@@ -6,8 +6,6 @@ namespace AIDataGen
 {
     public static class AIGen
     {
-        public static bool CacheModels { get; set; } = false;
-
         static AIGen() 
         {
             NativeLogConfig.llama_log_set((level, message) =>

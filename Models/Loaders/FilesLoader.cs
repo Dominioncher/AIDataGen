@@ -96,18 +96,25 @@ namespace AIDataGen.Models.Loaders
 
         private string _message;
 
+        private int _sectionsCount;
+
+        private int _currentSection;
+
         private readonly Lock _lock = new();
 
         private bool _firstDraw = true;
 
-        public ConsoleProgressBar(int progressBarWidth = 50, string message = "Loading...")
+        public ConsoleProgressBar(string message = "Loading...", int sectionsCount = 1, int progressBarWidth = 50)
         {
             _progressBarWidth = 50;
             _message = message ?? string.Empty;
+            _sectionsCount = sectionsCount;
         }
 
         public IProgress<DetailedProgress> GetProgress()
         {
+            _currentSection++;
+            _progress = 0;
             return new Progress<DetailedProgress>(ProgressToConsole);
         }
 
@@ -123,6 +130,16 @@ namespace AIDataGen.Models.Loaders
             var clearString = diff <= 0 ? "" : new string(' ', diff);
             _currentBarLength = bar.Length;
             return bar + clearString;
+        }
+
+        private string GetSectionString()
+        {
+            if (_sectionsCount == 1)
+            {
+                return "";
+            }
+
+            return $"{_currentSection}/{_sectionsCount} ";
         }
 
         private void SetCursorPosition()
@@ -150,7 +167,8 @@ namespace AIDataGen.Models.Loaders
                 _progress = progress.ProgressPercentage;
                 SetCursorPosition();
                 var bar = GetBarString(progress);
-                Console.Write(bar);
+                var section = GetSectionString();
+                Console.Write(section + bar);
             }
         }
     }

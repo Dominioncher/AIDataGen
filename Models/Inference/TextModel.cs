@@ -14,10 +14,10 @@ namespace AIDataGen.Models.Inference
         public async Task LoadModel()
         {
             // Load model
-            _parameters = new ModelParams(Constants.TextModelPath)
+            _parameters = new ModelParams(Constants.TextModelPath + "model.gguf")
             {
-                ContextSize = 4096, // The longest length of chat as memory.
-                GpuLayerCount = 5, // How many layers to offload to GPU. Please adjust it according to your GPU memory.
+                ContextSize = 8192, // The longest length of chat as memory.
+                GpuLayerCount = -1, // How many layers to offload to GPU. Please adjust it according to your GPU memory.
                 BatchSize = 128
             };
             Model = await LLamaWeights.LoadFromFileAsync(_parameters);
