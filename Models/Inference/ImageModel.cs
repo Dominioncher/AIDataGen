@@ -13,7 +13,7 @@ namespace AIDataGen.Models.Inference
 
         public void LoadModel()
         {
-            Model = StableDiffusionXLPipeline.CreatePipeline(Constants.ImageModelPath, ModelType.Turbo, 0, OnnxStack.Core.Config.ExecutionProvider.Cuda);
+            Model = StableDiffusionPipeline.CreatePipeline(Constants.ImageModelPath, ModelType.Base, 0, OnnxStack.Core.Config.ExecutionProvider.Cuda);
         }
 
         public async Task<Image> Generate(string prompt)
@@ -21,10 +21,17 @@ namespace AIDataGen.Models.Inference
             var promptOptions = new PromptOptions
             {
                 Prompt = prompt,
-                DiffuserType = DiffuserType.TextToImage                
+                DiffuserType = DiffuserType.TextToImage
             };
 
-            var image = await Model.GenerateImageAsync(promptOptions);
+            var image = await Model.GenerateImageAsync(promptOptions, new SchedulerOptions()
+            {
+                InferenceSteps = 25,
+                GuidanceScale = 7f,
+                Width = 512,
+                Height = 768,
+                SchedulerType = SchedulerType.DDPM
+            });
             return image.GetImage();
         }
 
@@ -39,7 +46,7 @@ namespace AIDataGen.Models.Inference
             var batchOptions = new BatchOptions
             {
                 ValueTo = count,
-                BatchType = BatchOptionType.Seed
+                BatchType = BatchOptionType.Seed,
             };
 
             await foreach (var result in Model.RunBatchAsync(batchOptions, promptOptions))

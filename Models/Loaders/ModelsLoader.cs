@@ -16,22 +16,19 @@ namespace AIDataGen.Models.Loaders
             Directory.Move(Constants.TmpPath + "Gemma", Constants.TextModelPath);
         }
 
-        private static async Task DownloadSDTurbo()
+        private static async Task DownloadJuggernaut()
         {
             if (Directory.Exists(Constants.ImageModelPath))
             {
                 return;
             }
 
-            var progressBar = new ConsoleProgressBar("Download TextToImage model...", 7);
-            await LoadFileFromRepo(Constants.ImageModelRepo, "text_encoder/model.onnx", "SDTurbo/text_encoder/model.onnx", progressBar);
-            await LoadFileFromRepo(Constants.ImageModelRepo, "text_encoder_2/model.onnx", "SDTurbo/text_encoder_2/model.onnx", progressBar);
-            await LoadFileFromRepo(Constants.ImageModelRepo, "text_encoder_2/model.onnx.data", "SDTurbo/text_encoder_2/model.onnx.data", progressBar);
-            await LoadFileFromRepo(Constants.ImageModelRepo, "unet/model.onnx", "SDTurbo/unet/model.onnx", progressBar);
-            await LoadFileFromRepo(Constants.ImageModelRepo, "unet/model.onnx.data", "SDTurbo/unet/model.onnx.data", progressBar);
-            await LoadFileFromRepo(Constants.ImageModelRepo, "vae_decoder/model.onnx", "SDTurbo/vae_decoder/model.onnx", progressBar);
-            await LoadFileFromRepo(Constants.ImageModelRepo, "vae_encoder/model.onnx", "SDTurbo/vae_encoder/model.onnx", progressBar);
-            Directory.Move(Constants.TmpPath + "SDTurbo", Constants.ImageModelPath);
+            var progressBar = new ConsoleProgressBar("Download TextToImage model...", 6);
+            await LoadFileFromRepo(Constants.ImageModelRepo, "text_encoder/model.onnx", "Juggernaut/text_encoder/model.onnx", progressBar);
+            await LoadFileFromRepo(Constants.ImageModelRepo, "unet/model.onnx", "Juggernaut/unet/model.onnx", progressBar);
+            await LoadFileFromRepo(Constants.ImageModelRepo, "vae_decoder/model.onnx", "Juggernaut/vae_decoder/model.onnx", progressBar);
+            await LoadFileFromRepo(Constants.ImageModelRepo, "vae_encoder/model.onnx", "Juggernaut/vae_encoder/model.onnx", progressBar);
+            Directory.Move(Constants.TmpPath + "Juggernaut", Constants.ImageModelPath);
         }
 
         private static async Task LoadFileFromRepo(string repo, string repoPath, string localPath, ConsoleProgressBar progress, string token = null)
@@ -47,7 +44,7 @@ namespace AIDataGen.Models.Loaders
             Directory.CreateDirectory(Constants.TmpPath);
             Directory.CreateDirectory(Constants.ModelsPath);
             DownloadGemma(token).Wait();
-            DownloadSDTurbo().Wait();
+            DownloadJuggernaut().Wait();
         }
     }
 }

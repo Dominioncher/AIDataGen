@@ -50,7 +50,7 @@ namespace TestAIGenConsoleApp
     [Prompt("Cars")]
     public class Car
     {
-        [Random(3, 5)]
+        [Random(1, 1)]
         [Prompt("Reviews from automobile journals", "Get only rewiew text")]
         public List<Review> Reviews { get; set; }
 
@@ -74,7 +74,7 @@ namespace TestAIGenConsoleApp
         [Prompt("Review author photoportrait", "Photorealistic", "Real photo")]
         public Image Photo { get; set; }
 
-        [Random(5, 10)]
+        [Random(1, 2)]
         [Prompt("Rewiew author car for daily usage", "Photorealistic", "Real photo")]
         public List<Image> Photos { get; set; }
 
